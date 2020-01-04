@@ -4,24 +4,31 @@ import java.util.Properties
 
 import scala.collection.JavaConverters._
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+import scala.reflect.runtime.universe.{typeOf, TypeTag}
 
-class Producer {
+class Producer[K: TypeTag, V: TypeTag] {
 
-  var kafkaProducer: Option[KafkaProducer[String, String]] = None
+  val ser = Map(
+    "String" -> "org.apache.kafka.common.serialization.StringSerializer",
+    "Int" -> "org.apache.kafka.common.serialization.IntegerSerializer"
+  )
+
+
+  var kafkaProducer: Option[KafkaProducer[K, V]] = None
 
   def initialise() = {
     val consumerProps = Map(
       "bootstrap.servers"  -> "localhost:9092",
-      "key.serializer"   -> "org.apache.kafka.common.serialization.StringSerializer",
-      "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer",
+      "key.serializer"   -> ser.getOrElse(typeOf[K].toString, ""),
+      "value.serializer" -> ser.getOrElse(typeOf[V].toString, ""),
     )
     val props = new Properties()
     props.putAll(consumerProps.mapValues(_.toString).asJava)
-    kafkaProducer = Some( new KafkaProducer[String, String](props))
+    kafkaProducer = Some( new KafkaProducer[K, V](props))
   }
 
-  def produce(kafkaRecord: KafkaRecord) = {
-    val record = new ProducerRecord[String, String](kafkaRecord.topic, kafkaRecord.key, kafkaRecord.value)
+  def produce(kafkaRecord: KafkaRecord[K, V]) = {
+    val record = new ProducerRecord[K, V](kafkaRecord.topic, kafkaRecord.key, kafkaRecord.value)
     kafkaProducer match {
       case Some(producer) => producer.send(record)
       case None => throw UninitializedFieldError("must initialise")
@@ -31,8 +38,8 @@ class Producer {
 }
 
 object Producer {
-  def apply(): Producer = {
-    val producer = new Producer()
+  def apply[K: TypeTag, V: TypeTag](): Producer[K, V] = {
+    val producer = new Producer[K, V]()
     producer.initialise()
     producer
   }

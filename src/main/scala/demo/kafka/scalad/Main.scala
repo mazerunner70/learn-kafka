@@ -3,12 +3,12 @@ package demo.kafka.scalad
 object Main {
 
   def main(args: Array[String]): Unit = {
-    val consumer1 =  Consumer("tree", "76")
+    val consumer1 =  Consumer[String, String]("tree", "76")
     consumer1.subscribe("test-1", (record) => println("1",record))
-    val consumer2 =  Consumer("tree", "876")
+    val consumer2 =  Consumer[String, String]("tree", "876")
     consumer2.subscribe("test-1", (record) => println("2", record))
     Thread.sleep(3000)
-    val producer = Producer()
+    val producer = Producer[String, String]()
     for (i <- 1 to 25) {
       producer.produce(KafkaRecord("test-1", 0, 0, "test"+i, i.toString))
       Thread.sleep(1000)
