@@ -7,6 +7,7 @@ import java.util.concurrent.Executors
 
 import scala.collection.JavaConverters._
 import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.errors.WakeupException
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.forkjoin._
@@ -26,7 +27,8 @@ class Consumer[K: TypeTag, V: TypeTag] {
   implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
   val ser = Map(
     "String" -> "org.apache.kafka.common.serialization.StringDeserializer",
-    "Int" -> "org.apache.kafka.common.serialization.IntegerDeserializer"
+    "Int" -> "org.apache.kafka.common.serialization.IntegerDeserializer",
+    "Long" -> "org.apache.kafka.common.serialization.LongDeserializer"
   )
   var kafkaConsumer: Option[KafkaConsumer[K, V]] = None
 
@@ -48,10 +50,30 @@ class Consumer[K: TypeTag, V: TypeTag] {
     kafkaConsumer = Some( new KafkaConsumer[K, V](props))
   }
 
+  def setShutdownHook() = {
+    val mainThread = Thread.currentThread
+    // Registering a shutdown hook so we can exit cleanly// Registering a shutdown hook so we can exit cleanly
+
+    Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run(): Unit = {
+        System.out.println("Starting exit...")
+        // Note that shutdownhook runs in a separate thread, so the only thing we can safely do to a consumer is wake it up
+        kafkaConsumer.foreach {println("found consumer");_.wakeup}
+        try
+          mainThread.join
+        catch {
+          case e: InterruptedException =>
+            println("interrupted")
+        }
+      }
+    })
+  }
+
   def subscribe(topic: String, func: KafkaRecord[K, V]=>Unit) = {
     kafkaConsumer match {
       case None =>
       case Some(consumer) => {
+        setShutdownHook()
         consumer.subscribe(util.Arrays.asList(topic))
         println("About to listen")
         val fut = Future {
@@ -67,6 +89,11 @@ class Consumer[K: TypeTag, V: TypeTag] {
             }
           } catch {
             case e: Exception => println(e)
+            case e: WakeupException => println(s" topic $topic listener woke up")
+          } finally {
+            println(s"topic '$topic' consumer closing down")
+            kafkaConsumer.foreach(_.close)
+            println(s"topic '$topic' consumer closed down")
           }
         }
       }

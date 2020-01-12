@@ -1,4 +1,4 @@
-name := "entellect-lang"
+name := "learning-Kafka"
 
 version := "0.1"
 

@@ -15,17 +15,15 @@ echo "Starting Broker"
 (bin/kafka-server-start.sh config/server.properties) 2>&1 >${DIR}/logs/broker.log &
 sleep 10
 
-echo "Creating topic (may fail if broker setup was slow, just rerun"
-
+echo "Deleteing old topics (may fail if broker setup was slow, just rerun"
 bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic fib
-bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic digitcounts
-bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic digitcounts2
+bin/kafka-topics.sh --delete --bootstrap-server localhost:9092 --topic unchanged
+echo "Creating topics (may fail if broker setup was slow, just rerun"
 bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 2 --topic fib
-bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 2 --topic digitcounts
-bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 2 --topic digitcounts2
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 2 --topic unchanged
 popd
 
 echo "Running Scala code"
-cd ${DIR}/..
-sbt "runMain demo.kafka.streamed.Main"
+cd ${DIR}/../..
+sbt "runMain demo.kafka.transforms.stateless.foreach.Main"
 

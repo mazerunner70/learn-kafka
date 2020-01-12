@@ -40,8 +40,10 @@ class Stream {
     kafkaStreams.foreach(_.start())
 
     sys.ShutdownHookThread {
+      println("stream shutdown")
       kafkaStreams.foreach(_.close(Duration.ofSeconds(10)))
     }
+
   }
 
 }
