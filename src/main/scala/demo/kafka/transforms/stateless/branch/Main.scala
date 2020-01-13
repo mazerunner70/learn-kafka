@@ -15,7 +15,7 @@ class Main {
     val builder= new StreamsBuilder
     val fibValues: KStream[String, String] = builder.stream[String, String]("fib")
     val branches = fibValues.branch(
-      (k, v) => (v.last.toInt-48>4),
+      (k, v) => (v.last.toInt-48>2),
       (k, v) => (v.last.toInt-48<5))
     branches(0).to("branch1")
     branches(1).to("branch2")
