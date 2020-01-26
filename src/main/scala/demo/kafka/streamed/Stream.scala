@@ -4,12 +4,14 @@ import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.CountDownLatch
 
+import org.apache.kafka.common.{Metric, MetricName}
 import org.apache.kafka.streams.scala.ImplicitConversions._
 import org.apache.kafka.streams.scala._
 import org.apache.kafka.streams.scala.kstream._
 import org.apache.kafka.streams.{KafkaStreams, StreamsConfig}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 class Stream {
 
@@ -38,12 +40,25 @@ class Stream {
     countdownLatch +=1
   }
 
+  def metricToString(mutableMap: mutable.Map[MetricName, _ <: Metric]) = {
+    mutableMap.foreach((name)=> println(s"($name)"))
+  }
+
+  def streamStartUp(kafkaStreams: KafkaStreams): Unit = {
+    kafkaStreams.start()
+    metricToString(kafkaStreams.metrics().asScala)
+    for (i <- 1 to 10) {
+      println(s"$i-${kafkaStreams.state()}")
+      Thread.sleep(1000)
+    }
+  }
+
   def start() = {
 
     sys.ShutdownHookThread {
       shutdown()
     }
-    kafkaStreams.foreach(_.start())
+    kafkaStreams.foreach(streamStartUp(_))
     println(s"Stream started $countdownLatch")
   }
 

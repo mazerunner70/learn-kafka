@@ -2,8 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/learn-kafka.learning-Kafka.iml" filepath="$PROJECT_DIR$/.idea/modules/learn-kafka.learning-Kafka.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/learning-Kafka.iml" filepath="$PROJECT_DIR$/.idea/modules/learning-Kafka.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/learning-Kafka-build.iml" filepath="$PROJECT_DIR$/.idea/modules/learning-Kafka-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/project.learning-Kafka-build.iml" filepath="$PROJECT_DIR$/.idea/modules/project.learning-Kafka-build.iml" />
     </modules>
   </component>
 </project>

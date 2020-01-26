@@ -57,6 +57,9 @@ class Main {
     }
   }
 
+  def getMaterializedStore(kafkaStreams: KafkaStreams): ReadOnlyKeyValueStore[String, Long] =
+    kafkaStreams.store(storeName, QueryableStoreTypes.keyValueStore[String, Long]())
+
   def readMaterializedStore(kafkaStreams: KafkaStreams): Unit = {
     val keyValueStore: ReadOnlyKeyValueStore[String, Long] = kafkaStreams.store(storeName, QueryableStoreTypes.keyValueStore[String, Long]())
     println(s"value: ${keyValueStore.get("10")}")
@@ -73,13 +76,17 @@ class Main {
     val consumer2 = Consumer[String, String]("grp2", "554")
     val consumer3 = Consumer[String, Long]("grp3", "544")
 
-    rawConsumer.subscribe("fib", {_=>})//x=>println(s"raw= $x"))
-    consumer2.subscribe("uncounted", {_=>})//x=>println(s"uncounted = $x"))
-    consumer3.subscribe("counted", x=>println(s"counted = $x"))
-    transformerStream.kafkaStreams.foreach(_.cleanUp())
 
     try {
       transformerStream.start()
+
+      rawConsumer.subscribe("fib", {
+        val store:Option[ReadOnlyKeyValueStore[String, Long]] = transformerStream.kafkaStreams.map(getMaterializedStore(_))
+        _=>store.foreach(x=>println(x.get("10")))})//x=>println(s"raw= $x"))
+      consumer2.subscribe("uncounted", {_=>})//x=>println(s"uncounted = $x"))
+      consumer3.subscribe("counted", x=>println(s"counted = $x"))
+//      transformerStream.kafkaStreams.foreach(_.cleanUp())
+
       Thread.sleep(2000)
       runFibGenerater(fibProducer)
       println("Now waiting1")
@@ -88,7 +95,7 @@ class Main {
       Thread.sleep(2000)
     } catch {
       case e: Throwable =>
-        System.exit(1)
+        e.printStackTrace()
     }
   }
 }
