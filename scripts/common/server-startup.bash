@@ -34,6 +34,6 @@ echo "+Deleting all consumer groups"
 
 bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --all-groups --reset-offsets --to-latest --all-topics  --execute
 
-echo "+Application reset3"
+echo "+Application reset"
 bin/kafka-streams-application-reset.sh --application-id "my-first-streams-application"
 

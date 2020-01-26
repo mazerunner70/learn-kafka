@@ -1,8 +1,9 @@
 package demo.kafka.scalad
 
+import java.text.SimpleDateFormat
 import java.time.Duration
 import java.util
-import java.util.Properties
+import java.util.{Calendar, Properties}
 import java.util.concurrent.Executors
 
 import scala.collection.JavaConverters._
@@ -21,7 +22,11 @@ import scala.util.{Failure, Success}
 //import org.apache.kafka.common.serialization.IntegerDeserializer
 
 
-case class KafkaRecord[K, V](topic: String, partition: Int, offset: Long, key: K, value: V)
+case class KafkaRecord[K, V](topic: String, partition: Int, offset: Long, key: K, value: V, recordCounter: Int = -1, timestamp: Long = -1) {
+//  val timestamp = Calendar.getInstance.getTime
+  val timeFormat = new SimpleDateFormat("HH:mm:ss")
+  override def toString: String = s"(${timeFormat.format(timestamp)})->(topic:$topic), (partition:$partition), (offset:$offset), (key: $key), (value: $value), (counter: $recordCounter)"
+}
 
 class Consumer[K: TypeTag, V: TypeTag] {
   implicit val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor)
@@ -31,6 +36,8 @@ class Consumer[K: TypeTag, V: TypeTag] {
     "Long" -> "org.apache.kafka.common.serialization.LongDeserializer"
   )
   var kafkaConsumer: Option[KafkaConsumer[K, V]] = None
+
+  var running = true
 
   def initialise(groupName: String, clientName: String) = {
     val consumerProps = Map(
@@ -56,36 +63,48 @@ class Consumer[K: TypeTag, V: TypeTag] {
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run(): Unit = {
-        System.out.println("Starting exit...")
-        // Note that shutdownhook runs in a separate thread, so the only thing we can safely do to a consumer is wake it up
-        kafkaConsumer.foreach {println("found consumer");_.wakeup}
-        try
-          mainThread.join
-        catch {
-          case e: InterruptedException =>
-            println("interrupted")
-        }
+//        System.out.println("Starting exit...")
+        shutdown()
+//        // Note that shutdownhook runs in a separate thread, so the only thing we can safely do to a consumer is wake it up
+//        kafkaConsumer.foreach {_.wakeup}
+//        try
+//          mainThread.join
+//        catch {
+//          case e: InterruptedException =>
+//            println("interrupted")
+//        }
       }
     })
   }
 
-  def subscribe(topic: String, func: KafkaRecord[K, V]=>Unit) = {
+  var subscribedTopic:Option[String] = None
+  var consumedCount: Int = 0
+  def incrementCount() = {consumedCount +=1; consumedCount}
+
+  def subscribe(
+                 topic: String,
+                 func: KafkaRecord[K, V]=>Unit,
+                 shutdownWhenFunc: KafkaRecord[K, V]=>Boolean = {_=>false}
+               ): Option[Future[Unit]] = {
     kafkaConsumer match {
-      case None =>
+      case None =>  None
       case Some(consumer) => {
         setShutdownHook()
+        subscribedTopic = Some(topic)
         consumer.subscribe(util.Arrays.asList(topic))
-        println("About to listen")
+        println(s"Subscribing to $topic")
         val fut = Future {
           try {
             println("Listening")
-            while (true) {
-              val record = consumer.poll(Duration.ofSeconds(10)).asScala
+            while (running) {
+              val record = consumer.poll(Duration.ofSeconds(5)).asScala
               var scalaFormRecords = Array[KafkaRecord[K, V]]()
               for (data <- record.iterator) {
-                scalaFormRecords :+= KafkaRecord(data.topic(), data.partition(), data.offset(), data.key(), data.value())
+                scalaFormRecords :+= KafkaRecord(data.topic(), data.partition(), data.offset(), data.key(), data.value(), incrementCount(), data.timestamp())
               }
               scalaFormRecords.foreach(func(_))
+              if (scalaFormRecords.foldLeft(false){ (a,b) => a || shutdownWhenFunc(b)})
+                shutdown()
             }
           } catch {
             case e: Exception => println(e)
@@ -96,8 +115,14 @@ class Consumer[K: TypeTag, V: TypeTag] {
             println(s"topic '$topic' consumer closed down")
           }
         }
+        Some(fut)
       }
     }
+  }
+
+  def shutdown() = {
+    println(s"Shutdown signal for '${subscribedTopic.getOrElse("Empty")}' consumer")
+    running = false
   }
 }
 
