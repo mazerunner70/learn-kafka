@@ -31,6 +31,7 @@ class Stream {
     val streamProps = Map(
       StreamsConfig.APPLICATION_ID_CONFIG -> applicationId,
       StreamsConfig.BOOTSTRAP_SERVERS_CONFIG -> "localhost:9092",
+      StreamsConfig.COMMIT_INTERVAL_MS_CONFIG -> 45000 // Is the time gap between writing out the current materialized data to topic
     )
     val props = new Properties()
     props.putAll(streamProps.mapValues(_.toString).asJava)

@@ -52,7 +52,7 @@ class Main {
       seed += 1
         fib(1, 0, 49, (x: BigInt, count: Int) => {
           producer.produce(KafkaRecord("fib", 1, 0, count.toString, x.toString()))
-          Thread.sleep(20)
+          Thread.sleep(15)
         })
     }
   }
@@ -82,9 +82,11 @@ class Main {
 
       rawConsumer.subscribe("fib", {
         val store:Option[ReadOnlyKeyValueStore[String, Long]] = transformerStream.kafkaStreams.map(getMaterializedStore(_))
-        _=>store.foreach(x=>println(x.get("10")))})//x=>println(s"raw= $x"))
+        _=>store.foreach(x=>print(s"${x.get("10")},"))})//x=>println(s"raw= $x"))
       consumer2.subscribe("uncounted", {_=>})//x=>println(s"uncounted = $x"))
-      consumer3.subscribe("counted", x=>println(s"counted = $x"))
+      consumer3.subscribe("counted", {
+        x=>println(s"counted = $x")
+      })
 //      transformerStream.kafkaStreams.foreach(_.cleanUp())
 
       Thread.sleep(2000)
